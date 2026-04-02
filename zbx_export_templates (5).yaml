@@ -1,0 +1,197 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 54c61b55813043d9b986620c966633be
+      name: LAB
+  host_groups:
+    - uuid: fce987791aab4982887bda4b0cef0abb
+      name: CLOUD
+  templates:
+    - uuid: a200cd70154542b19f97b50f5bdc85d6
+      template: 'Template OCI Load Balancer - Coleta'
+      name: 'Template OCI Load Balancer - Coleta'
+      groups:
+        - name: LAB
+      items:
+        - uuid: 692c77ed076044b3b3a63d4aa744ef89
+          name: 'LB: Backends healthy'
+          type: DEPENDENT
+          key: oci.lb.backends.healthy
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.backends_healthy
+          master_item:
+            key: 'oci_lb_details.py["{$LB_OCID}"]'
+        - uuid: 6a57c99d48244a77971dcec79bd2ef27
+          name: 'LB: Backends Set Total'
+          type: DEPENDENT
+          key: oci.lb.backends.set.total
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.backend_sets_total
+          master_item:
+            key: 'oci_lb_details.py["{$LB_OCID}"]'
+        - uuid: 504a17d008f349debfcc3d2f3ff44d5d
+          name: 'LB: Backends Unhealthy'
+          type: DEPENDENT
+          key: oci.lb.backends.unhealthy
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.backends_unhealthy
+          master_item:
+            key: 'oci_lb_details.py["{$LB_OCID}"]'
+          triggers:
+            - uuid: f597e91b0ef74c74b24cc42ca79ed54d
+              expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.backends.unhealthy)>0'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.backends.unhealthy)<0'
+              name: 'O {HOSTNAME} possui backends UNHEALTHY'
+              priority: WARNING
+              manual_close: 'YES'
+        - uuid: 72bd3d126a31463386d87edcd3fcdfd3
+          name: 'LB: Backends Unknown'
+          type: DEPENDENT
+          key: oci.lb.backends.unknown
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.backends_unknown
+          master_item:
+            key: 'oci_lb_details.py["{$LB_OCID}"]'
+        - uuid: 1e332528ae814fa683086e78ba24ae50
+          name: 'LB Overall Health'
+          type: DEPENDENT
+          key: oci.lb.health
+          delay: '0'
+          value_type: CHAR
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.overall_health
+          master_item:
+            key: 'oci_lb_details.py["{$LB_OCID}"]'
+          triggers:
+            - uuid: f19067fd900c422886d5af60eb621357
+              expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.health)="CRITICAL"'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.health)="OK"'
+              name: 'O {HOSTNAME} com Overall Health CRITICAL'
+              priority: WARNING
+              description: 'Válida se existe uma falha crítica de saúde no  load balancer.'
+              manual_close: 'YES'
+        - uuid: 6f30550543a64c4ca78192bc6641801d
+          name: 'LB: Status'
+          type: DEPENDENT
+          key: oci.lb.status
+          delay: '0'
+          value_type: CHAR
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.updown
+          master_item:
+            key: 'oci_lb_details.py["{$LB_OCID}"]'
+          triggers:
+            - uuid: 5bc92efcf430418cb239cf8d4d67dfae
+              expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.status)="DOWN"'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.status)="UP"'
+              name: 'O {HOSTNAME} está DOWN'
+              priority: WARNING
+              description: 'Verifica o último status do load balancer, se for DOWN dispara um alerta de severidade High.'
+        - uuid: 94b51f3feab1487aa692565db49cf080
+          name: 'OCI LB: Raw JSON'
+          type: EXTERNAL
+          key: 'oci_lb_details.py["{$LB_OCID}"]'
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+      discovery_rules:
+        - uuid: 3a342351f8f741c2aa78e7be84693cb5
+          name: 'OCI LB: Backend Discovery'
+          type: EXTERNAL
+          key: 'oci_lb_discovery_backends.py["{$LB_OCID}"]'
+          item_prototypes:
+            - uuid: 5c4429893d164dbba34a43b95858a8e8
+              name: 'Backend [{#BACKEND_SET}]: {#BACKEND_NAME} Status'
+              type: DEPENDENT
+              key: 'oci.lb.backend.status[{#BACKEND_NAME}]'
+              delay: '0'
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.backends_status.[''{#BACKEND_NAME}'']'
+              master_item:
+                key: 'oci_lb_details.py["{$LB_OCID}"]'
+              trigger_prototypes:
+                - uuid: 1afee238dc7d4f66b9f099e1d1ea2a8b
+                  expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.backend.status[{#BACKEND_NAME}])="CRITICAL"'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.backend.status[{#BACKEND_NAME}])="OK"'
+                  name: '{HOST.NAME} - Backend {#BACKEND_NAME} (Pool: {#BACKEND_SET}) está CRITICAL'
+                  priority: WARNING
+                - uuid: c85c249c3a3a48c990a701b30e86f040
+                  expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.backend.status[{#BACKEND_NAME}])="WARNING"'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Template OCI Load Balancer - Coleta/oci.lb.backend.status[{#BACKEND_NAME}])="OK"'
+                  name: '{HOST.NAME} - Backend {#BACKEND_NAME} (Pool: {#BACKEND_SET}) está WARNING'
+                  priority: WARNING
+    - uuid: fd6a16841e2249fdb75bf39d7301bee8
+      template: 'Template OCI Load Balancer - Discovery'
+      name: 'Template OCI Load Balancer - Discovery'
+      groups:
+        - name: LAB
+      discovery_rules:
+        - uuid: 0748be7f26ca417d8b8a6857088ec469
+          name: 'Discovery OCI Load Balancers'
+          type: EXTERNAL
+          key: oci_lb_discovery.sh
+          host_prototypes:
+            - uuid: 89048088e2fa40e6aa18c64cd08efa6a
+              host: 'RANDS - LB - {#HOSTNAME} - {#ENVIRONMENT}'
+              name: 'RANDS - LB - {#HOSTNAME} - {#ENVIRONMENT}'
+              inventory_mode: AUTOMATIC
+              group_links:
+                - group:
+                    name: CLOUD
+              group_prototypes:
+                - name: 'Compartment - {#ENVIRONMENT}'
+              templates:
+                - name: 'Template OCI Load Balancer - Coleta'
+              macros:
+                - macro: '{$LB_OCID}'
+                  value: '{#OCID}'
+              custom_interfaces: 'YES'
+              interfaces:
+                - useip: 'NO'
+                  dns: '{#HOSTNAME}'
+  graphs:
+    - uuid: c56580eaade2493eae1d4a14ad4b4991
+      name: 'Status Operacional de Backends'
+      show_work_period: 'NO'
+      graph_items:
+        - color: 00FF00
+          calc_fnc: ALL
+          item:
+            host: 'Template OCI Load Balancer - Coleta'
+            key: oci.lb.backends.unhealthy
+    - uuid: 082fbe89b14e4ae0a747608145bbb52a
+      name: 'Total de Backends'
+      show_work_period: 'NO'
+      graph_items:
+        - color: 199C0D
+          calc_fnc: MAX
+          item:
+            host: 'Template OCI Load Balancer - Coleta'
+            key: oci.lb.backends.set.total
