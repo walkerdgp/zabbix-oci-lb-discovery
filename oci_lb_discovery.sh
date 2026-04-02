@@ -4,10 +4,9 @@ export SUPPRESS_LABEL_WARNING=True
 
 # Variaveis de ambiente e caminhos absolutos
 CONFIG_FILE="/home/zabbix/.oci/config"
-OCI_BIN="/usr/local/bin/oci"  # <-- Substitua pelo resultado do 'which oci'
-JQ_BIN="/usr/bin/jq"          # <-- Substitua pelo resultado do 'which jq'
+OCI_BIN="/root/bin/oci"
+JQ_BIN="/bin/jq"
 
-# Executa a busca com caminho absoluto
 $OCI_BIN search resource structured-search \
   --config-file "$CONFIG_FILE" \
   --query-text "query loadbalancer resources" \
