@@ -93,7 +93,7 @@ systemctl restart zabbix-server
 ## 🖥 Configuração no Frontend do Zabbix
 
 1. Importe os templates XML inclusos neste repositório.
-2. Crie um Host Pai no Zabbix (ex: `RANDON - OCI LOAD BALANCERS`).
+2. Crie um Host Pai no Zabbix (ex: `MASTER HOST - OCI LOAD BALANCERS`).
 3. Adicione a interface fictícia (Agent IP: `127.0.0.1`, Porta: `10050`) para permitir o vínculo de templates.
 4. Vincule o template de **Discovery** neste Host Pai.
 5. **Comportamento Esperado:**
